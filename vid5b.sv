@@ -118,6 +118,11 @@ module vid5b (input reg clk,
     reg [4:0] burst1cnt, burst1cnt_d; 
 
     reg [63:0] cursor_data;  
+    wire [1:0] mask;
+    reg cur_px_d,cur_px; //tells whether the the current pixel is within the cursor or not.
+    
+    assign mask = cursor_data[1:0]; 
+    //assign cur_px =  (hcnt > cur0.Curx)&&(hcnt +1 <= cur0.Curx + cur1.CurXsize)&& cr0.CursorEnable &&(vcnt >= cur0.Cury) && (vcnt + 1 <= cur0.Cury + cur1.CurYsize);
 
     //FIFO registers
     reg rd_en, wr_en; 
@@ -191,6 +196,7 @@ module vid5b (input reg clk,
         base_d = base;
         lineinc_d = lineinc;
         cursor_d = cursor;
+        cur_px_d = cur_px;
 
         reqout = 0;
         cmdout = 0;
@@ -346,11 +352,11 @@ module vid5b (input reg clk,
                             cursor_buffer_d = cursor_buffer + 8;
                         end
                     end
-                    2'b011: begin
+                    3'b011: begin
                         cursor_data[63:32] = addrdatain;
                         firstcur_data_d = firstcur_data + 1;
                     end
-                    2'b001: begin
+                    3'b001: begin
                         if(firstcur_data == 1) begin
                             cursor_data[31:0] = addrdatain;
                         end    
@@ -376,10 +382,39 @@ module vid5b (input reg clk,
             repetition_phase: begin
                 if(pixelcnt < (cr0.Pclk - 1)) begin  //every value has to wait pclk times
                     pixelcnt_d = pixelcnt + 1;
-                    R_d = rgb[23:16];
-                    G_d = rgb[15:8];
-                    B_d = rgb[7:0];
-                                        
+                    if(cur_px)begin
+						case (mask)
+							2'b00 :		begin
+										R_d = rgb[23:16];
+										G_d = rgb[15:8];
+										B_d = rgb[7:0];
+										end
+										
+							2'b01 : 	begin
+										R_d = ~rgb[23:16];
+										G_d = ~rgb[15:8];
+										B_d = ~rgb[7:0];
+										end
+										
+							2'b10 : 	begin
+										R_d = curfg.R;
+										G_d = curfg.G;
+										B_d = curfg.B;
+										end
+										
+							2'b11 : 	begin
+										R_d = curbg.R;
+										G_d = curbg.G;
+										B_d = curbg.B;
+										end
+						endcase
+						
+                    end
+                    else   begin
+										R_d = rgb[23:16];
+										G_d = rgb[15:8];
+										B_d = rgb[7:0];
+                    end                  
                     if(hcnt > h1.Hsize) begin  //horizontal count
                         hblank_d = 1;
                         R_d = 8'b0;
@@ -409,6 +444,8 @@ module vid5b (input reg clk,
                 end
                 else begin
                     hcnt_d = hcnt + 1;
+                    if(cur_px) cursor_data = cursor_data >>2;
+                   																				
                     if(hcnt_d == 1) 
                         cursor_fetch_d = 0;  //enabling the fetching operation of cursor
                     // if(hcnt_d > h1.Hend)
