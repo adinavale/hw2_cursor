@@ -81,6 +81,11 @@ typedef enum reg [1:0] {
     extra_phase
 } RGBDISPLAY;
 
+typedef enum {
+    mask_idle,
+    mask_active
+} MASKSTATE;
+
 module vid5b (input reg clk,
     input reg reset,
     input reg selin,
@@ -148,6 +153,7 @@ module vid5b (input reg clk,
     Cursor cursor, cursor_d;
     REGSTATE regwrite_state_ns, regwrite_state_cs;
     RGBDISPLAY rgbdisplay_ns, rgbdisplay_cs;
+    MASKSTATE maskstate_ns, maskstate_cs;
 
     assign fifo_rd_en = rd_en;
     assign fifo_wr_en = wr_en;
