@@ -1,0 +1,173 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Sat Oct 22 17:16:12 2022
+[*]
+[dumpfile] "/home/015313389@SJSUAD.SJSU.EDU/ee_272/Homework/hw2_cursor/HW2/hw2_cursor/vid5.vcd"
+[dumpfile_mtime] "Sat Oct 22 17:14:37 2022"
+[dumpfile_size] 169099
+[savefile] "/home/015313389@SJSUAD.SJSU.EDU/ee_272/Homework/hw2_cursor/HW2/hw2_cursor/wave_config.gtkw"
+[timestart] 0
+[size] 1280 617
+[pos] -51 -1
+*-17.000000 57300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[treeopen] top.v.
+[sst_width] 229
+[signals_width] 210
+[sst_expanded] 1
+[sst_vpaned_height] 145
+@28
+top.clk
+top.reset
+@22
+top.i0.B[7:0]
+top.i0.G[7:0]
+top.i0.R[7:0]
+@28
+top.i0.ackin
+@22
+top.i0.addrdatain[31:0]
+top.i0.addrdataout[31:0]
+@28
+top.i0.clk
+top.i0.cmdin[2:0]
+top.i0.cmdout[2:0]
+top.i0.enable
+top.i0.hblank
+top.i0.hsync
+top.i0.interrupt
+top.i0.lenin[1:0]
+top.i0.lenout[1:0]
+top.i0.reqout[1:0]
+@22
+top.i0.reqtar[3:0]
+@28
+top.i0.reset
+top.i0.selin
+top.i0.vblank
+top.i0.vsync
+@22
+top.v.B[7:0]
+top.v.B_d[7:0]
+top.v.G[7:0]
+top.v.G_d[7:0]
+top.v.R[7:0]
+top.v.R_d[7:0]
+@28
+top.v.ackin
+@22
+top.v.addrdatain[31:0]
+top.v.addrdataout[31:0]
+top.v.base[31:0]
+top.v.base_d[31:0]
+top.v.burst1cnt[4:0]
+top.v.burst1cnt_d[4:0]
+top.v.burstcnt[3:0]
+top.v.burstcnt_d[3:0]
+@28
+top.v.clk
+top.v.cmdin[2:0]
+top.v.cmdout[2:0]
+@22
+top.v.cr0[9:0]
+top.v.cr0_d[9:0]
+top.v.cur0[31:0]
+top.v.cur0_d[31:0]
+top.v.cur1[15:0]
+top.v.cur1_d[15:0]
+top.v.curbg[31:0]
+top.v.curbg_d[31:0]
+top.v.curfg[31:0]
+top.v.curfg_d[31:0]
+top.v.cursor[31:0]
+top.v.cursor_buffer[7:0]
+top.v.cursor_buffer_d[7:0]
+top.v.cursor_d[31:0]
+top.v.cursor_data[63:0]
+@28
+top.v.cursor_fetch
+top.v.cursor_fetch_d
+@22
+top.v.data_in[31:0]
+top.v.data_out[31:0]
+@28
+top.v.empty
+top.v.enable
+@22
+top.v.fetchcnt[13:0]
+top.v.fetchcnt_d[13:0]
+top.v.fifo_data_in[31:0]
+top.v.fifo_data_out[31:0]
+@28
+top.v.fifo_empty
+top.v.fifo_full
+top.v.fifo_half_full
+top.v.fifo_rd_en
+top.v.fifo_wr_en
+top.v.first_data
+@22
+top.v.firstcur_data[6:0]
+top.v.firstcur_data_d[6:0]
+@28
+top.v.full
+@22
+top.v.h1[25:0]
+top.v.h1_d[25:0]
+top.v.h2[25:0]
+top.v.h2_d[25:0]
+@28
+top.v.half_full
+top.v.hblank
+top.v.hblank_d
+@22
+top.v.hcnt[13:0]
+top.v.hcnt_d[13:0]
+@28
+top.v.hsync
+top.v.hsync_d
+top.v.lenin[1:0]
+top.v.lenout[1:0]
+@22
+top.v.linecnt[13:0]
+top.v.linecnt_d[13:0]
+top.v.lineinc[31:0]
+top.v.lineinc_d[31:0]
+top.v.pixelcnt[5:0]
+top.v.pixelcnt_d[5:0]
+@28
+top.v.rd_en
+@22
+top.v.reg_addr[7:0]
+top.v.reg_addr_d[7:0]
+@28
+top.v.regwrite_state_cs[2:0]
+top.v.regwrite_state_ns[2:0]
+top.v.reqout[1:0]
+@22
+top.v.reqtar[3:0]
+@28
+top.v.reset
+@22
+top.v.rgb[31:0]
+top.v.rgb_d[31:0]
+@28
+top.v.rgbdisplay_cs[1:0]
+top.v.rgbdisplay_ns[1:0]
+top.v.selin
+@22
+top.v.v1[25:0]
+top.v.v1_d[25:0]
+top.v.v2[25:0]
+top.v.v2_d[25:0]
+@28
+top.v.vblank
+top.v.vblank_d
+@22
+top.v.vcnt[13:0]
+top.v.vcnt_d[13:0]
+@28
+top.v.vsync
+top.v.vsync_d
+top.v.wr_en
+[pattern_trace] 1
+[pattern_trace] 0
