@@ -265,7 +265,7 @@ module vid5b (input reg clk,
             rgbfetch_phase: begin
                 burst1cnt_d = 0;
 
-                if(hblank && ((vcnt + 1 >= cur0.Curx) && (vcnt + 1 <= cur0.Curx + cur1.CurYsize) && hcnt > 0) && cr0.CursorEnable && ~cursor_fetch) begin
+                if(hblank && ((vcnt + 1 >= cur0.Cury) && (vcnt + 1 <= cur0.Cury + cur1.CurYsize) && hcnt > 0) && cr0.CursorEnable && ~cursor_fetch) begin
                     lenout = 1;   //coz we need 64 bit value
                     firstcur_data_d = 0;
                     addrdataout = cursor.Cursor + cursor_buffer;
