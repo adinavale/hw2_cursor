@@ -16,7 +16,8 @@ module FIFO #(parameter FIFO_depth = 16,
 
     assign empty = (((rd_addr - wr_addr) == 0) || ((wr_addr - rd_addr) == 0)) ? 1'b1 : 1'b0;
     assign full = (((rd_addr - wr_addr) == 1) || ((wr_addr - rd_addr) == FIFO_depth - 1))  ? 1'b1 : 1'b0;
-    assign half_full = ((((rd_addr - wr_addr) < (FIFO_depth/2) -1) && ~empty) || ((wr_addr - rd_addr) > (FIFO_depth/2) - 1))  ? 1'b1 : 1'b0;
+    //assign half_full = ((((rd_addr - wr_addr) < (FIFO_depth/2)) || ((wr_addr - rd_addr) >= (FIFO_depth/2))) && ~empty)  ? 1'b1 : 1'b0;
+    assign half_full = (((rd_addr > wr_addr && (rd_addr - wr_addr <= FIFO_depth/2)) || (wr_addr > rd_addr && (wr_addr - rd_addr >= FIFO_depth/2))) && ~empty) ? 1'b1: 1'b0; 
 
     always @ (*) begin
 	    mem_d = mem;
@@ -32,6 +33,7 @@ module FIFO #(parameter FIFO_depth = 16,
             rd_addr_d = rd_addr + 1;
             data_out = mem[rd_addr];
         end
+        
     end
 
     always @ (posedge clk or posedge rst) begin
