@@ -1,7 +1,6 @@
 // a simple top level file for vid5
 `timescale 1ns/10ps
 
-`include "vid5b.sv"
 `include "intf.svh"
 
 package mejuvm;
@@ -66,4 +65,4 @@ module top();
 
 endmodule : top
 
-
+`include "vid5b.sv"
