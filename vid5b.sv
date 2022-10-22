@@ -6,13 +6,13 @@ typedef enum reg [2:0] {
     data_phase,
     dummy_phase,
     rgbfetch_phase,
-    pushfifo_phase
+    pushfifo_phase,
+    cursorfetch_phase
 } REGSTATE;
 
 typedef enum reg [1:0] {
     fetch_phase, 
     repetition_phase, 
-    update_phase, 
     extra_phase
 } RGBDISPLAY;
 
@@ -38,7 +38,7 @@ typedef struct packed {
 	reg [31:0] Cursor;
 } Cursor;
 
-module vid5a (input reg clk,
+module vid5b (input reg clk,
     input reg reset,
     input reg selin,
     input reg[2:0] cmdin,
@@ -67,8 +67,14 @@ module vid5a (input reg clk,
     reg hsync_d, hblank_d, vsync_d, vblank_d;
     reg [7:0] R_d, G_d, B_d;
 
-    reg [13:0] fetchcnt, fetchcnt_d;
-    reg [3:0] burst1cnt, burst1cnt_d;
+    reg [13:0] fetchcnt, fetchcnt_d; //to get as many vsize rgb values
+    reg [13:0] linecnt, linecnt_d; //to get as many hsize rgb values
+    reg [7:0] cursor_buffer, cursor_buffer_d; //buffer addr for cursor - assuming it wont go beyond 8bit
+    reg cursor_fetch, cursor_fetch_d;
+    reg [6:0] firstcur_data, firstcur_data_d; //data of upto 64 rows hence 6 bits
+    reg [4:0] burst1cnt, burst1cnt_d; 
+
+    reg [63:0] cursor_data;
 
     //FIFO registers
     reg rd_en, wr_en; 
@@ -78,7 +84,7 @@ module vid5a (input reg clk,
     wire [31:0] fifo_data_in, fifo_data_out;
     //FIFO registers end
     
-    FIFO #(.FIFO_depth(16), .FIFO_width(32), .addr_width (4)) fifo(.clk(clk), .rst(reset), .rd_en(fifo_rd_en), .wr_en(fifo_wr_en), .data_in(fifo_data_in), .empty(fifo_empty), .full(fifo_full), .half_full(fifo_half_full), .data_out(fifo_data_out));
+    FIFO #(.FIFO_depth(32), .FIFO_width(32), .addr_width (5)) fifo(.clk(clk), .rst(reset), .rd_en(fifo_rd_en), .wr_en(fifo_wr_en), .data_in(fifo_data_in), .empty(fifo_empty), .full(fifo_full), .half_full(fifo_half_full), .data_out(fifo_data_out));
     
     CR0 cr0, cr0_d;
     CUR0 cur0, cur0_d;
@@ -110,6 +116,10 @@ module vid5a (input reg clk,
         lenout = 0;
         burst1cnt_d = burst1cnt;
         fetchcnt_d = fetchcnt;
+        linecnt_d = linecnt;
+        cursor_buffer_d = cursor_buffer;
+        cursor_fetch_d = cursor_fetch;
+        firstcur_data_d = firstcur_data;
         burstcnt_d = burstcnt;
         reg_addr_d = reg_addr;
         hcnt_d = hcnt;
@@ -142,14 +152,6 @@ module vid5a (input reg clk,
         reqout = 0;
         cmdout = 0;
         reqtar = 0;
-        // hblank = hblank;
-        // hsync = hsync;
-        // vblank = vblank;
-        // vsync = vsync;
-        // R = R;
-        // G = G;
-        // B = B;
-        
 
         //FSM - initial register value fetch 
         wr_en = 0;
@@ -213,36 +215,70 @@ module vid5a (input reg clk,
                 if(cr0.Enable == 1) begin
                     regwrite_state_ns = rgbfetch_phase;
                     fetchcnt_d = 0;
+                    linecnt_d = 0;
+                    cursor_buffer_d = 0;
+                    cursor_fetch_d = 0;
                 end
             end
             rgbfetch_phase: begin
                 burst1cnt_d = 0;
-                lenout = 2;
-                if(~half_full) begin
-                    addrdataout = base + (lineinc * fetchcnt);
-                    regwrite_state_ns = pushfifo_phase;
-                    cmdout = 3'b010;
+
+                if(hblank && ((vcnt + 1 >= cur0.Curx) && (vcnt + 1 <= cur0.Cury)) && cr0.CursorEnable && ~cursor_fetch) begin
+                    lenout = 1;   //coz we need 64 bit value
+                    firstcur_data_d = 0;
+                    addrdataout = cursor.Cursor + cursor_buffer;
+                    regwrite_state_ns = cursorfetch_phase;
                     reqout = 3;
-                    if(fetchcnt > v1.Vsize) begin
-                        regwrite_state_ns = addr_phase;  //wait for the next register updates process
-                        reqout = 0;
-                        cmdout = 0;
-                        lenout = 0;
-                    end
+                    cmdout = 3'b010;
                 end
                 else begin
-                    regwrite_state_ns = rgbfetch_phase;
+                    if(h1.Hsize >= linecnt + 16)
+                        lenout = 3;
+                    else if (h1.Hsize >= linecnt + 8)
+                        lenout = 2;
+                    else if (h1.Hsize >= linecnt + 4)
+                        lenout = 1;
+                    else 
+                        lenout = 0;
+                    
+                    addrdataout = base + (lineinc * fetchcnt) + (linecnt * 4); //lineinc is the address along the hsize
+                    if(~half_full) begin
+                        regwrite_state_ns = pushfifo_phase;
+                        cmdout = 3'b010;
+                        reqout = 3;
+                        if(fetchcnt > v1.Vsize) begin
+                            regwrite_state_ns = addr_phase;  //wait for the next register updates process
+                            reqout = 0;
+                            cmdout = 0;
+                            lenout = 0;
+                        end
+                    end
+                    else begin
+                        regwrite_state_ns = rgbfetch_phase;
+                    end
                 end
             end
             pushfifo_phase: begin
-                lenout = 2;
+                if(h1.Hsize >= linecnt + 16)   //recreating the same logic---have to change this approach later
+                    lenout = 3;
+                else if (h1.Hsize >= linecnt + 8)
+                    lenout = 2;
+                else if (h1.Hsize >= linecnt + 4)
+                    lenout = 1;
+                else 
+                    lenout = 0;
+                    
                 cmdout = 3'b010;
                 regwrite_state_ns = pushfifo_phase;
                 case(cmdin)
                     3'b000: begin
-                        if(burst1cnt == 2**(lenout + 1)) begin
-                            fetchcnt_d = fetchcnt + 1;
+                        if((burst1cnt == 2**(lenout + 1) && lenout > 0) || (lenout == 0 && burst1cnt == 1)) begin  //lenout 2 means 8 burst, 3 means 16 burst
+                            linecnt_d = linecnt + burst1cnt;
                             regwrite_state_ns = rgbfetch_phase;
+                            if(linecnt_d > h1.Hsize) begin
+                                fetchcnt_d = fetchcnt + 1;
+                                linecnt_d = 0;
+                            end
                         end
                     end
                     3'b011: begin
@@ -254,6 +290,28 @@ module vid5a (input reg clk,
                         wr_en = 1;
                         data_in = addrdatain;
                         burst1cnt_d = burst1cnt + 1;
+                    end
+                endcase
+            end
+            cursorfetch_phase: begin
+                lenout = 1;
+                cmdout = 3'b010;
+                case(cmdin)
+                    3'b000: begin
+                        if(firstcur_data == 2**(lenout + 1) && lenout > 0) begin
+                            cursor_fetch_d = 1;
+                            regwrite_state_ns = rgbfetch_phase;
+                        end
+                    end
+                    2'b011: begin
+                        cursor_data[63:32] = addrdatain;
+                        firstcur_data_d = firstcur_data + 1;
+                    end
+                    2'b001: begin
+                        if(firstcur_data == 1) begin
+                            cursor_data[31:0] = addrdatain;
+                        end    
+                        firstcur_data_d = firstcur_data + 1;
                     end
                 endcase
             end
@@ -273,7 +331,7 @@ module vid5a (input reg clk,
                     rgbdisplay_ns = fetch_phase;
             end
             repetition_phase: begin
-                if(pixelcnt < (cr0.Pclk - 2)) begin  //every value has to wait pclk times
+                if(pixelcnt < (cr0.Pclk - 1)) begin  //every value has to wait pclk times
                     pixelcnt_d = pixelcnt + 1;
                     R_d = rgb[23:16];
                     G_d = rgb[15:8];
@@ -307,25 +365,34 @@ module vid5a (input reg clk,
 
                 end
                 else begin
-                    rgbdisplay_ns = update_phase;
                     hcnt_d = hcnt + 1;
-                    if(hcnt_d > h1.Hend)
+                    // if(hcnt_d > h1.Hend)
+                    //     vcnt_d = vcnt + 1;
+                    
+                    if(hcnt + 1 > h1.Hend) begin
+                        hcnt_d = 0;
                         vcnt_d = vcnt + 1;
+                        cursor_fetch_d = 0;  //enabling the fetching operation of cursor
+                        if(vcnt + 1 > v1.Vend) 
+                            vcnt_d = 0;
+                    end
+                    
+                    if(((hcnt_d > h1.Hsize) && (hcnt_d <= h1.Hend)) || ((vcnt_d > v1.Vsize) && (vcnt_d <= v1.Vend)))
+                        rgbdisplay_ns = extra_phase;
+                    else
+                        rgbdisplay_ns = fetch_phase;
                 end
             end
-            update_phase: begin
-                if(hcnt > h1.Hend) begin 
-                    hcnt_d = 0;
-                end
-                if(vcnt > v1.Vend) begin
-                    vcnt_d = 0;
-                end
+            // update_phase: begin
+            //     // if(hcnt > h1.Hend) begin 
+            //     //     hcnt_d = 0;
+            //     // end
+            //     // if(vcnt > v1.Vend) begin
+            //     //     vcnt_d = 0;
+            //     // end
 
-                if(((hcnt > h1.Hsize) && (hcnt <= h1.Hend)) || ((vcnt > v1.Vsize) && (vcnt <= v1.Vend)))
-                    rgbdisplay_ns = extra_phase;
-                else
-                    rgbdisplay_ns = fetch_phase;
-            end
+                
+            // end
             extra_phase: begin
                 rgbdisplay_ns = repetition_phase;
                 pixelcnt_d = 0;
@@ -339,6 +406,10 @@ module vid5a (input reg clk,
             burstcnt <= 0;
             regwrite_state_cs <= addr_phase;
             fetchcnt <= 0;
+            linecnt <= 0;
+            cursor_buffer <= 0;
+            cursor_fetch <= 0;
+            firstcur_data <= 0;
             burst1cnt <= 0;
             reg_addr <= 0;
             h1 <= 0;
@@ -373,6 +444,10 @@ module vid5a (input reg clk,
             burstcnt <= burstcnt_d;
             regwrite_state_cs <= regwrite_state_ns;
             fetchcnt <= fetchcnt_d;
+            linecnt <= linecnt_d;
+            cursor_buffer <= cursor_buffer_d;
+            cursor_fetch <= cursor_fetch_d;
+            firstcur_data <= firstcur_data_d;
             burst1cnt <= burst1cnt_d;
             reg_addr <= reg_addr_d;
             h1 <= h1_d;
