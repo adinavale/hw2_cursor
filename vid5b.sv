@@ -1,20 +1,48 @@
-`include "vid5regs.sv"
 `include "FIFO.sv"
 
-typedef enum reg [2:0] {
-    addr_phase,
-    data_phase,
-    dummy_phase,
-    rgbfetch_phase,
-    pushfifo_phase,
-    cursorfetch_phase
-} REGSTATE;
+typedef enum [1:0] {
+	MD24,MD32,MD16,MDText
+} VMODE;
 
-typedef enum reg [1:0] {
-    fetch_phase, 
-    repetition_phase, 
-    extra_phase
-} RGBDISPLAY;
+typedef struct packed {
+	reg [5:0] Pclk;
+	reg Enable;
+	reg CursorEnable;
+	VMODE Mode;
+} CR0;
+
+typedef struct packed {
+	reg [12:0] Curx;
+	reg [12:0] Cury;
+} CUR0;
+
+typedef struct packed {
+	reg [5:0] BlinkRate;
+	reg [4:0] CurXsize;
+	reg [4:0] CurYsize;
+} CUR1;
+
+typedef struct packed {
+    reg [23:16] R;
+    reg [15:8] G;
+	reg [7:0] B;
+} CURFG;
+
+typedef struct packed {
+	reg [23:16] R;
+    reg [15:8] G;
+	reg [7:0] B;
+} CURBG;
+
+typedef struct packed {
+	reg [12:0] Hsize;
+	reg [12:0] Hend;
+} H1;
+
+typedef struct packed {
+	reg [12:0] HsyncStart;
+	reg [12:0] HsyncEnd;
+} H2;
 
 typedef struct packed {
 	reg [12:0] Vsize;
@@ -37,6 +65,21 @@ typedef struct packed {
 typedef struct packed {
 	reg [31:0] Cursor;
 } Cursor;
+
+typedef enum reg [2:0] {
+    addr_phase,
+    data_phase,
+    dummy_phase,
+    rgbfetch_phase,
+    pushfifo_phase,
+    cursorfetch_phase
+} REGSTATE;
+
+typedef enum reg [1:0] {
+    fetch_phase, 
+    repetition_phase, 
+    extra_phase
+} RGBDISPLAY;
 
 module vid5b (input reg clk,
     input reg reset,
@@ -74,7 +117,7 @@ module vid5b (input reg clk,
     reg [6:0] firstcur_data, firstcur_data_d; //data of upto 64 rows hence 6 bits
     reg [4:0] burst1cnt, burst1cnt_d; 
 
-    reg [63:0] cursor_data;
+    reg [63:0] cursor_data;  
 
     //FIFO registers
     reg rd_en, wr_en; 
@@ -217,13 +260,12 @@ module vid5b (input reg clk,
                     fetchcnt_d = 0;
                     linecnt_d = 0;
                     cursor_buffer_d = 0;
-                    cursor_fetch_d = 0;
                 end
             end
             rgbfetch_phase: begin
                 burst1cnt_d = 0;
 
-                if(hblank && ((vcnt + 1 >= cur0.Curx) && (vcnt + 1 <= cur0.Cury)) && cr0.CursorEnable && ~cursor_fetch) begin
+                if(hblank && ((vcnt + 1 >= cur0.Curx) && (vcnt + 1 <= cur0.Curx + cur1.CurYsize) && hcnt > 0) && cr0.CursorEnable && ~cursor_fetch) begin
                     lenout = 1;   //coz we need 64 bit value
                     firstcur_data_d = 0;
                     addrdataout = cursor.Cursor + cursor_buffer;
@@ -301,6 +343,7 @@ module vid5b (input reg clk,
                         if(firstcur_data == 2**(lenout + 1) && lenout > 0) begin
                             cursor_fetch_d = 1;
                             regwrite_state_ns = rgbfetch_phase;
+                            cursor_buffer_d = cursor_buffer + 8;
                         end
                     end
                     2'b011: begin
@@ -366,13 +409,14 @@ module vid5b (input reg clk,
                 end
                 else begin
                     hcnt_d = hcnt + 1;
+                    if(hcnt_d == 1) 
+                        cursor_fetch_d = 0;  //enabling the fetching operation of cursor
                     // if(hcnt_d > h1.Hend)
                     //     vcnt_d = vcnt + 1;
                     
                     if(hcnt + 1 > h1.Hend) begin
                         hcnt_d = 0;
                         vcnt_d = vcnt + 1;
-                        cursor_fetch_d = 0;  //enabling the fetching operation of cursor
                         if(vcnt + 1 > v1.Vend) 
                             vcnt_d = 0;
                     end
